@@ -211,9 +211,11 @@ window.app = {
         const container = document.getElementById('cart-items');
         const badge = document.getElementById('cart-badge');
         const totalEl = document.getElementById('cart-total');
+        const totalHeaderEl = document.getElementById('cart-total-header');
+        const subtotalEl = document.getElementById('cart-subtotal');
         const btnCheckout = document.getElementById('btn-checkout');
         
-        // Badge
+        // Badge y contadores
         const count = state.cart.reduce((a,b) => a + b.qty, 0);
         badge.innerText = count;
         badge.classList.toggle('hidden', count === 0);
@@ -221,32 +223,71 @@ window.app = {
         // Total
         const total = state.cart.reduce((a,b) => a + (b.price * b.qty), 0);
         totalEl.innerText = `S/. ${total.toFixed(2)}`;
+        if (totalHeaderEl) totalHeaderEl.innerText = `S/. ${total.toFixed(2)}`;
         btnCheckout.disabled = count === 0;
+
+        // Subtotal tipo calculadora
+        if(state.cart.length > 0 && subtotalEl) {
+            subtotalEl.classList.remove('hidden');
+            const subtotalHTML = state.cart.map(item => {
+                const itemTotal = item.price * item.qty;
+                return `
+                    <div class="flex justify-between items-center text-stone-700">
+                        <span class="text-xs">${item.qty}x ${item.name}</span>
+                        <span class="font-bold">S/. ${itemTotal.toFixed(2)}</span>
+                    </div>
+                `;
+            }).join('');
+            subtotalEl.innerHTML = `
+                <div class="space-y-2">
+                    ${subtotalHTML}
+                    <div class="border-t-2 border-dashed border-stone-300 pt-2 mt-2 flex justify-between items-center text-stone-900">
+                        <span class="font-bold">SUBTOTAL:</span>
+                        <span class="text-lg font-bold">S/. ${total.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        } else if (subtotalEl) {
+            subtotalEl.classList.add('hidden');
+        }
 
         // Items
         if(state.cart.length === 0) {
             container.innerHTML = `
-                <div class="text-center text-stone-300 py-10 flex flex-col items-center">
-                    <i data-lucide="shopping-basket" class="w-16 h-16 mb-4 opacity-30"></i>
-                    <p class="text-lg font-medium text-stone-400">Tu bandeja está vacía</p>
-                    <p class="text-sm">¡Elige algo rico del menú!</p>
+                <div class="text-center text-stone-300 py-12 flex flex-col items-center">
+                    <i data-lucide="shopping-basket" class="w-20 h-20 mb-4 opacity-20"></i>
+                    <p class="text-xl font-bold text-stone-400">Carrito vacío</p>
+                    <p class="text-sm text-stone-500">¡Agrega productos del menú!</p>
                 </div>
             `;
         } else {
-            container.innerHTML = state.cart.map(item => `
-                <div class="flex gap-4 p-3 bg-white border border-stone-200 rounded-xl items-center shadow-sm">
-                    <img src="${item.img}" alt="${item.name}" class="w-16 h-16 rounded-lg object-cover">
-                    <div class="flex-1">
-                        <h4 class="font-bold text-sm text-stone-800">${item.name}</h4>
-                        <p class="text-stone-500 text-xs">S/. ${item.price}</p>
+            container.innerHTML = state.cart.map(item => {
+                const itemTotal = item.price * item.qty;
+                return `
+                <div class="bg-white border-2 border-stone-200 rounded-xl p-4 hover:border-amber-400 transition-all shadow-sm hover:shadow-md">
+                    <div class="flex gap-4 items-start mb-3">
+                        <img src="${item.img}" alt="${item.name}" class="w-20 h-20 rounded-lg object-cover shadow-sm">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-base text-stone-900 mb-1">${item.name}</h4>
+                            <p class="text-stone-500 text-sm">S/. ${item.price.toFixed(2)} c/u</p>
+                            <p class="text-amber-600 font-bold text-lg mt-1">S/. ${itemTotal.toFixed(2)}</p>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3 bg-stone-100 rounded-lg p-1">
-                        <button onclick="app.changeQty(${item.id}, -1)" class="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-stone-600 hover:text-red-500 text-xs"><i data-lucide="minus" class="w-3 h-3"></i></button>
-                        <span class="text-sm font-bold w-4 text-center">${item.qty}</span>
-                        <button onclick="app.changeQty(${item.id}, 1)" class="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-stone-600 hover:text-green-500 text-xs"><i data-lucide="plus" class="w-3 h-3"></i></button>
+                    <div class="flex items-center justify-between bg-stone-50 rounded-lg p-2 border border-stone-200">
+                        <button onclick="app.changeQty(${item.id}, -1)" class="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-stone-600 hover:text-red-500 hover:bg-red-50 transition-all border border-stone-200">
+                            <i data-lucide="minus" class="w-5 h-5"></i>
+                        </button>
+                        <div class="text-center px-4">
+                            <span class="text-xs text-stone-500 block">Cantidad</span>
+                            <span class="text-2xl font-bold text-stone-900">${item.qty}</span>
+                        </div>
+                        <button onclick="app.changeQty(${item.id}, 1)" class="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-stone-600 hover:text-green-500 hover:bg-green-50 transition-all border border-stone-200">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                        </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
         lucide.createIcons();
     },
