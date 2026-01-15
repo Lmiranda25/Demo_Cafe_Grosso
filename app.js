@@ -1,0 +1,366 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// CONFIGURACIÓN FIREBASE
+const firebaseConfig = JSON.parse(__firebase_config);
+const appInfo = initializeApp(firebaseConfig);
+const auth = getAuth(appInfo);
+const db = getFirestore(appInfo);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'cafe-grosso-v1';
+
+// ESTADO GLOBAL
+const state = {
+    user: null,
+    view: 'customer', // 'customer' | 'admin'
+    cart: [],
+    orderType: 'delivery', // 'delivery' | 'pickup'
+    orders: [],
+    categoryFilter: 'all'
+};
+
+// DATOS MENU (MOCK)
+const MENU = [
+    { id: 1, name: "Medialunas de Manteca", price: 900, cat: "panaderia", img: "🥐", desc: "Clásicas argentinas. Docena $9000." },
+    { id: 2, name: "Medialunas de Grasa", price: 850, cat: "panaderia", img: "🥐", desc: "Saladitas y crocantes. Ideales para el mate." },
+    { id: 3, name: "Café con Leche + 3 Medialunas", price: 4200, cat: "panaderia", img: "☕", desc: "La promo clásica de la casa." },
+    { id: 4, name: "Tostado Jamón y Queso", price: 5500, cat: "salado", img: "🥪", desc: "En pan de miga triple, bien tostado." },
+    { id: 5, name: "Empanada Carne Cuchillo", price: 1500, cat: "salado", img: "🥟", desc: "Jugosa, con aceituna, huevo y cebolla de verdeo." },
+    { id: 6, name: "Empanada Jamón y Queso", price: 1400, cat: "salado", img: "🥟", desc: "Mucho queso, masa hojaldrada casera." },
+    { id: 7, name: "Milanesa Napolitana c/ Papas", price: 9500, cat: "platos", img: "🍽️", desc: "Para compartir. Salsa casera y mucho queso." },
+    { id: 8, name: "Submarino", price: 3200, cat: "panaderia", img: "🍫", desc: "Leche caliente con barra de chocolate Águila." },
+    { id: 9, name: "Alfajor de Maicena XL", price: 1800, cat: "panaderia", img: "🍪", desc: "Con mucho dulce de leche y coco rallado." },
+    { id: 10, name: "Matambre a la Pizza", price: 10500, cat: "platos", img: "🥩", desc: "Tierno, con muzzarella y papas rejilla." },
+    { id: 11, name: "Sándwich de Lomito", price: 8900, cat: "platos", img: "🍔", desc: "Completo: lechuga, tomate, jamón, queso, huevo." },
+    { id: 12, name: "Pastafrola de Membrillo", price: 2500, cat: "panaderia", img: "🥧", desc: "Porción generosa de la receta de la abuela." }
+];
+
+// FUNCIONES DE UI
+window.app = {
+    init: async () => {
+        // Auth
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+            await signInAnonymously(auth);
+        }
+        
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                state.user = user;
+                app.listenOrders(); // Escuchar pedidos en tiempo real
+            }
+        });
+
+        app.renderMenu();
+        lucide.createIcons();
+    },
+
+    // Navegación
+    showHome: () => {
+        document.getElementById('customer-view').classList.remove('hidden');
+        document.getElementById('admin-view').classList.add('hidden');
+        window.scrollTo(0,0);
+    },
+    
+    toggleView: () => {
+        const isAdmin = document.getElementById('admin-view').classList.contains('hidden');
+        if (isAdmin) {
+            const pass = prompt("Ingrese clave de Admin (cualquier cosa sirve en demo):");
+            if(pass) {
+                document.getElementById('customer-view').classList.add('hidden');
+                document.getElementById('admin-view').classList.remove('hidden');
+                state.view = 'admin';
+            }
+        } else {
+            app.showHome();
+        }
+    },
+
+    toggleCart: () => {
+        const modal = document.getElementById('cart-modal');
+        const isHidden = modal.classList.contains('hidden');
+        if(isHidden) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        } else {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    },
+
+    // Categorías
+    filterCategory: (cat) => {
+        state.categoryFilter = cat;
+        
+        // Actualizar botones UI
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            if(btn.dataset.cat === cat) {
+                btn.classList.remove('bg-transparent', 'border-stone-600', 'text-white');
+                btn.classList.add('bg-amber-500', 'text-stone-900', 'border-transparent');
+            } else {
+                btn.classList.add('bg-transparent', 'border-stone-600', 'text-white');
+                btn.classList.remove('bg-amber-500', 'text-stone-900', 'border-transparent');
+                // Fix specific styles for 'all' button if needed, simpler logic:
+                if(btn.dataset.cat === 'all' && cat !== 'all') {
+                     btn.classList.remove('bg-amber-500', 'text-stone-900');
+                     btn.classList.add('text-white', 'border-stone-600');
+                }
+            }
+        });
+        app.renderMenu();
+    },
+
+    // Renderizado
+    renderMenu: () => {
+        const grid = document.getElementById('menu-grid');
+        grid.innerHTML = '';
+        
+        const filtered = state.categoryFilter === 'all' 
+            ? MENU 
+            : MENU.filter(i => i.cat === state.categoryFilter);
+
+        filtered.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden flex flex-col card-hover transition-all duration-300';
+            el.innerHTML = `
+                <div class="h-40 bg-stone-100 flex items-center justify-center text-6xl relative">
+                    ${item.img}
+                    <span class="absolute top-3 right-3 bg-white/90 backdrop-blur text-stone-900 text-xs font-bold px-2 py-1 rounded-md border border-stone-200">$${item.price}</span>
+                </div>
+                <div class="p-5 flex-1 flex flex-col">
+                    <h3 class="font-bold text-lg text-stone-800 mb-1 leading-tight">${item.name}</h3>
+                    <p class="text-stone-500 text-sm mb-4 flex-1">${item.desc}</p>
+                    <button onclick="app.addToCart(${item.id})" class="w-full py-2 bg-stone-900 text-white rounded-lg font-bold text-sm hover:bg-amber-500 hover:text-stone-900 transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> AGREGAR
+                    </button>
+                </div>
+            `;
+            grid.appendChild(el);
+        });
+        lucide.createIcons();
+    },
+
+    // Carrito
+    addToCart: (id) => {
+        const item = MENU.find(i => i.id === id);
+        const existing = state.cart.find(i => i.id === id);
+        
+        if(existing) {
+            existing.qty++;
+        } else {
+            state.cart.push({...item, qty: 1});
+        }
+        
+        app.updateCartUI();
+        
+        // Animación simple de feedback
+        const btn = document.querySelector(`button[onclick="app.addToCart(${id})"]`);
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> AGREGADO`;
+        btn.classList.add('bg-green-600', 'text-white');
+        lucide.createIcons();
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600');
+        }, 1000);
+    },
+
+    removeFromCart: (id) => {
+        state.cart = state.cart.filter(i => i.id !== id);
+        app.updateCartUI();
+    },
+
+    changeQty: (id, delta) => {
+        const item = state.cart.find(i => i.id === id);
+        if(item) {
+            item.qty += delta;
+            if(item.qty <= 0) app.removeFromCart(id);
+            else app.updateCartUI();
+        }
+    },
+
+    updateCartUI: () => {
+        const container = document.getElementById('cart-items');
+        const badge = document.getElementById('cart-badge');
+        const totalEl = document.getElementById('cart-total');
+        const btnCheckout = document.getElementById('btn-checkout');
+        
+        // Badge
+        const count = state.cart.reduce((a,b) => a + b.qty, 0);
+        badge.innerText = count;
+        badge.classList.toggle('hidden', count === 0);
+        
+        // Total
+        const total = state.cart.reduce((a,b) => a + (b.price * b.qty), 0);
+        totalEl.innerText = `$${total.toLocaleString()}`;
+        btnCheckout.disabled = count === 0;
+
+        // Items
+        if(state.cart.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-stone-300 py-10 flex flex-col items-center">
+                    <i data-lucide="shopping-basket" class="w-16 h-16 mb-4 opacity-30"></i>
+                    <p class="text-lg font-medium text-stone-400">Tu bandeja está vacía</p>
+                    <p class="text-sm">¡Elige algo rico del menú!</p>
+                </div>
+            `;
+        } else {
+            container.innerHTML = state.cart.map(item => `
+                <div class="flex gap-4 p-3 bg-white border border-stone-200 rounded-xl items-center">
+                    <div class="text-2xl w-12 h-12 bg-stone-50 rounded-lg flex items-center justify-center">${item.img}</div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-stone-800">${item.name}</h4>
+                        <p class="text-stone-500 text-xs">$${item.price}</p>
+                    </div>
+                    <div class="flex items-center gap-3 bg-stone-100 rounded-lg p-1">
+                        <button onclick="app.changeQty(${item.id}, -1)" class="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-stone-600 hover:text-red-500 text-xs"><i data-lucide="minus" class="w-3 h-3"></i></button>
+                        <span class="text-sm font-bold w-4 text-center">${item.qty}</span>
+                        <button onclick="app.changeQty(${item.id}, 1)" class="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-stone-600 hover:text-green-500 text-xs"><i data-lucide="plus" class="w-3 h-3"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        lucide.createIcons();
+    },
+
+    setOrderType: (type) => {
+        state.orderType = type;
+        const btnDelivery = document.getElementById('btn-delivery');
+        const btnPickup = document.getElementById('btn-pickup');
+        const addrInput = document.getElementById('input-address');
+
+        if(type === 'delivery') {
+            btnDelivery.className = 'py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-2 border-amber-500 bg-amber-50 text-amber-900 transition-all';
+            btnPickup.className = 'py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-2 border-stone-200 text-stone-500 hover:border-stone-300 transition-all';
+            addrInput.classList.remove('hidden');
+        } else {
+            btnPickup.className = 'py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-2 border-amber-500 bg-amber-50 text-amber-900 transition-all';
+            btnDelivery.className = 'py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-2 border-stone-200 text-stone-500 hover:border-stone-300 transition-all';
+            addrInput.classList.add('hidden');
+        }
+        lucide.createIcons();
+    },
+
+    // Checkout
+    checkout: async () => {
+        if(!state.user) return;
+        
+        const name = document.getElementById('input-name').value;
+        const address = document.getElementById('input-address').value;
+        
+        if(!name) return alert("Por favor ingresa tu nombre.");
+        if(state.orderType === 'delivery' && !address) return alert("Por favor ingresa tu dirección.");
+
+        const btn = document.getElementById('btn-checkout');
+        btn.disabled = true;
+        btn.innerText = "ENVIANDO...";
+
+        try {
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), {
+                items: state.cart,
+                total: state.cart.reduce((a,b) => a + (b.price * b.qty), 0),
+                customerName: name,
+                address: state.orderType === 'delivery' ? address : 'Retiro en Tienda',
+                type: state.orderType,
+                status: 'pending', // pending, preparing, ready
+                timestamp: serverTimestamp(),
+                userId: state.user.uid
+            });
+
+            state.cart = [];
+            app.updateCartUI();
+            app.toggleCart();
+            alert("¡Pedido enviado a la cocina! Gracias por elegir Café Grosso.");
+            
+        } catch (e) {
+            console.error(e);
+            alert("Error al enviar pedido. Intente nuevamente.");
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = `PEDIR <i data-lucide="arrow-right" class="w-5 h-5"></i>`;
+        lucide.createIcons();
+    },
+
+    // Admin Logic
+    listenOrders: () => {
+        if(!state.user) return;
+        
+        const q = query(
+            collection(db, 'artifacts', appId, 'public', 'data', 'orders'),
+            orderBy('timestamp', 'desc')
+        );
+
+        onSnapshot(q, (snapshot) => {
+            const orders = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+            state.orders = orders;
+            app.renderAdminBoard();
+        }, (error) => {
+            console.error("Error listening to orders:", error);
+        });
+    },
+
+    updateStatus: async (orderId, newStatus) => {
+        try {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), {
+                status: newStatus
+            });
+        } catch (e) {
+            console.error("Error updating status:", e);
+        }
+    },
+
+    renderAdminBoard: () => {
+        const pending = state.orders.filter(o => o.status === 'pending');
+        const preparing = state.orders.filter(o => o.status === 'preparing');
+        const ready = state.orders.filter(o => o.status === 'ready');
+
+        document.getElementById('count-pending').innerText = pending.length;
+        document.getElementById('count-preparing').innerText = preparing.length;
+        document.getElementById('count-ready').innerText = ready.length;
+
+        const renderCard = (order, nextStatus, nextLabel, btnColor, showDelete = false) => {
+            const itemsHtml = order.items.map(i => `<li class="text-xs text-stone-600 flex justify-between"><span>${i.qty}x ${i.name}</span></li>`).join('');
+            const typeIcon = order.type === 'delivery' ? 'bike' : 'store';
+            const typeColor = order.type === 'delivery' ? 'text-amber-600 bg-amber-100' : 'text-stone-600 bg-stone-200';
+            
+            return `
+                <div class="bg-white p-3 rounded-lg shadow-sm border border-stone-200 slide-in">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-bold text-stone-800 text-sm">#${order.id.slice(-4)}</span>
+                        <span class="text-xs px-2 py-1 rounded-full flex items-center gap-1 font-bold uppercase ${typeColor}">
+                            <i data-lucide="${typeIcon}" class="w-3 h-3"></i> ${order.type}
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <p class="font-bold text-sm truncate">${order.customerName}</p>
+                        <p class="text-xs text-stone-500 truncate">${order.address}</p>
+                    </div>
+                    <ul class="mb-3 border-t border-b border-dashed border-stone-200 py-2 space-y-1">
+                        ${itemsHtml}
+                    </ul>
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-stone-900">$${order.total}</span>
+                        <div class="flex gap-1">
+                            ${nextStatus ? `
+                                <button onclick="app.updateStatus('${order.id}', '${nextStatus}')" class="px-3 py-1.5 ${btnColor} text-white text-xs font-bold rounded-md shadow-sm hover:opacity-90 transition-opacity">
+                                    ${nextLabel}
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        document.getElementById('orders-pending').innerHTML = pending.map(o => renderCard(o, 'preparing', 'COCINAR', 'bg-blue-600')).join('');
+        document.getElementById('orders-preparing').innerHTML = preparing.map(o => renderCard(o, 'ready', 'LISTO', 'bg-green-600')).join('');
+        document.getElementById('orders-ready').innerHTML = ready.map(o => renderCard(o, null, null, null)).join('');
+        
+        lucide.createIcons();
+    }
+};
+
+// INICIAR
+app.init();
