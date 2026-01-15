@@ -2,12 +2,19 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// CONFIGURACIÓN FIREBASE
-const firebaseConfig = JSON.parse(__firebase_config);
-const appInfo = initializeApp(firebaseConfig);
-const auth = getAuth(appInfo);
-const db = getFirestore(appInfo);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'cafe-grosso-v1';
+// CONFIGURACIÓN FIREBASE (OPCIONAL - Sin Firebase funciona con localStorage)
+let auth, db, appId;
+try {
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    if (firebaseConfig) {
+        const appInfo = initializeApp(firebaseConfig);
+        auth = getAuth(appInfo);
+        db = getFirestore(appInfo);
+        appId = typeof __app_id !== 'undefined' ? __app_id : 'cafe-grosso-v1';
+    }
+} catch (e) {
+    console.log('Firebase no configurado, usando localStorage');
+}
 
 // ESTADO GLOBAL
 const state = {
@@ -21,36 +28,52 @@ const state = {
 
 // DATOS MENU (MOCK)
 const MENU = [
-    { id: 1, name: "Medialunas de Manteca", price: 900, cat: "panaderia", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop", desc: "Clásicas argentinas. Docena $9000." },
-    { id: 2, name: "Medialunas de Grasa", price: 850, cat: "panaderia", img: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop", desc: "Saladitas y crocantes. Ideales para el mate." },
-    { id: 3, name: "Café con Leche + 3 Medialunas", price: 4200, cat: "panaderia", img: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop", desc: "La promo clásica de la casa." },
-    { id: 4, name: "Tostado Jamón y Queso", price: 5500, cat: "salado", img: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=300&fit=crop", desc: "En pan de miga triple, bien tostado." },
-    { id: 5, name: "Empanada Carne Cuchillo", price: 1500, cat: "salado", img: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop", desc: "Jugosa, con aceituna, huevo y cebolla de verdeo." },
-    { id: 6, name: "Empanada Jamón y Queso", price: 1400, cat: "salado", img: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&h=300&fit=crop", desc: "Mucho queso, masa hojaldrada casera." },
-    { id: 7, name: "Milanesa Napolitana c/ Papas", price: 9500, cat: "platos", img: "https://images.unsplash.com/photo-1612392062798-2537158f895b?w=400&h=300&fit=crop", desc: "Para compartir. Salsa casera y mucho queso." },
-    { id: 8, name: "Submarino", price: 3200, cat: "panaderia", img: "https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?w=400&h=300&fit=crop", desc: "Leche caliente con barra de chocolate Águila." },
-    { id: 9, name: "Alfajor de Maicena XL", price: 1800, cat: "panaderia", img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=300&fit=crop", desc: "Con mucho dulce de leche y coco rallado." },
-    { id: 10, name: "Matambre a la Pizza", price: 10500, cat: "platos", img: "https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=300&fit=crop", desc: "Tierno, con muzzarella y papas rejilla." },
-    { id: 11, name: "Sándwich de Lomito", price: 8900, cat: "platos", img: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&h=300&fit=crop", desc: "Completo: lechuga, tomate, jamón, queso, huevo." },
-    { id: 12, name: "Pastafrola de Membrillo", price: 2500, cat: "panaderia", img: "https://images.unsplash.com/photo-1519915212116-7cfef71f1d3e?w=400&h=300&fit=crop", desc: "Porción generosa de la receta de la abuela." }
+    { id: 1, name: "Medialunas de Manteca", price: 8, cat: "panaderia", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop", desc: "Clásicas argentinas. Docena S/. 90" },
+    { id: 2, name: "Medialunas de Grasa", price: 7, cat: "panaderia", img: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop", desc: "Saladitas y crocantes. Ideales para el mate." },
+    { id: 3, name: "Café con Leche + 3 Medialunas", price: 35, cat: "panaderia", img: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop", desc: "La promo clásica de la casa." },
+    { id: 4, name: "Tostado Jamón y Queso", price: 18, cat: "salado", img: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=300&fit=crop", desc: "En pan de miga triple, bien tostado." },
+    { id: 5, name: "Empanada Carne Cuchillo", price: 12, cat: "salado", img: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop", desc: "Jugosa, con aceituna, huevo y cebolla de verdeo." },
+    { id: 6, name: "Empanada Jamón y Queso", price: 12, cat: "salado", img: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&h=300&fit=crop", desc: "Mucho queso, masa hojaldrada casera." },
+    { id: 7, name: "Milanesa Napolitana c/ Papas", price: 45, cat: "platos", img: "https://images.unsplash.com/photo-1612392062798-2537158f895b?w=400&h=300&fit=crop", desc: "Para compartir. Salsa casera y mucho queso." },
+    { id: 8, name: "Submarino", price: 15, cat: "panaderia", img: "https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?w=400&h=300&fit=crop", desc: "Leche caliente con barra de chocolate Águila." },
+    { id: 9, name: "Alfajor de Maicena XL", price: 10, cat: "panaderia", img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=300&fit=crop", desc: "Con mucho dulce de leche y coco rallado." },
+    { id: 10, name: "Matambre a la Pizza", price: 48, cat: "platos", img: "https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=300&fit=crop", desc: "Tierno, con muzzarella y papas rejilla." },
+    { id: 11, name: "Sándwich de Lomito", price: 38, cat: "platos", img: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&h=300&fit=crop", desc: "Completo: lechuga, tomate, jamón, queso, huevo." },
+    { id: 12, name: "Pastafrola de Membrillo", price: 14, cat: "panaderia", img: "https://images.unsplash.com/photo-1519915212116-7cfef71f1d3e?w=400&h=300&fit=crop", desc: "Porción generosa de la receta de la abuela." }
 ];
 
 // FUNCIONES DE UI
 window.app = {
     init: async () => {
-        // Auth
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-            await signInAnonymously(auth);
-        }
-        
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                state.user = user;
-                app.listenOrders(); // Escuchar pedidos en tiempo real
+        // Auth (opcional)
+        try {
+            if (auth) {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        state.user = user;
+                        app.listenOrders();
+                    }
+                });
+            } else {
+                // Sin Firebase, usar localStorage
+                state.user = { uid: 'local-user-' + Date.now() };
+                // Cargar pedidos del localStorage
+                const savedOrders = localStorage.getItem('cafe-orders');
+                if (savedOrders) {
+                    state.orders = JSON.parse(savedOrders);
+                    app.renderAdminBoard();
+                }
             }
-        });
+        } catch (e) {
+            console.log('Usando modo local sin Firebase');
+            state.user = { uid: 'local-user-' + Date.now() };
+        }
 
         app.renderMenu();
         lucide.createIcons();
@@ -126,7 +149,7 @@ window.app = {
             el.innerHTML = `
                 <div class="h-48 bg-stone-100 relative overflow-hidden">
                     <img src="${item.img}" alt="${item.name}" class="w-full h-full object-cover" loading="lazy">
-                    <span class="absolute top-3 right-3 bg-amber-500 backdrop-blur text-stone-900 text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg border-2 border-white">$${item.price}</span>
+                    <span class="absolute top-3 right-3 bg-amber-500 backdrop-blur text-stone-900 text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg border-2 border-white">S/. ${item.price}</span>
                 </div>
                 <div class="p-5 flex-1 flex flex-col">
                     <h3 class="font-bold text-lg text-stone-800 mb-1 leading-tight">${item.name}</h3>
@@ -193,7 +216,7 @@ window.app = {
         
         // Total
         const total = state.cart.reduce((a,b) => a + (b.price * b.qty), 0);
-        totalEl.innerText = `$${total.toLocaleString()}`;
+        totalEl.innerText = `S/. ${total.toFixed(2)}`;
         btnCheckout.disabled = count === 0;
 
         // Items
@@ -211,7 +234,7 @@ window.app = {
                     <img src="${item.img}" alt="${item.name}" class="w-16 h-16 rounded-lg object-cover">
                     <div class="flex-1">
                         <h4 class="font-bold text-sm text-stone-800">${item.name}</h4>
-                        <p class="text-stone-500 text-xs">$${item.price}</p>
+                        <p class="text-stone-500 text-xs">S/. ${item.price}</p>
                     </div>
                     <div class="flex items-center gap-3 bg-stone-100 rounded-lg p-1">
                         <button onclick="app.changeQty(${item.id}, -1)" class="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-stone-600 hover:text-red-500 text-xs"><i data-lucide="minus" class="w-3 h-3"></i></button>
@@ -257,16 +280,27 @@ window.app = {
         btn.innerText = "ENVIANDO...";
 
         try {
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), {
+            const newOrder = {
+                id: 'order-' + Date.now(),
                 items: state.cart,
                 total: state.cart.reduce((a,b) => a + (b.price * b.qty), 0),
                 customerName: name,
                 address: state.orderType === 'delivery' ? address : 'Retiro en Tienda',
                 type: state.orderType,
-                status: 'pending', // pending, preparing, ready
-                timestamp: serverTimestamp(),
+                status: 'pending',
+                timestamp: new Date().toISOString(),
                 userId: state.user.uid
-            });
+            };
+
+            if (db && auth) {
+                // Con Firebase
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), newOrder);
+            } else {
+                // Sin Firebase, usar localStorage
+                state.orders.unshift(newOrder);
+                localStorage.setItem('cafe-orders', JSON.stringify(state.orders));
+                app.renderAdminBoard();
+            }
 
             state.cart = [];
             app.updateCartUI();
@@ -287,25 +321,46 @@ window.app = {
     listenOrders: () => {
         if(!state.user) return;
         
-        const q = query(
-            collection(db, 'artifacts', appId, 'public', 'data', 'orders'),
-            orderBy('timestamp', 'desc')
-        );
+        if (db && auth) {
+            // Con Firebase
+            const q = query(
+                collection(db, 'artifacts', appId, 'public', 'data', 'orders'),
+                orderBy('timestamp', 'desc')
+            );
 
-        onSnapshot(q, (snapshot) => {
-            const orders = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
-            state.orders = orders;
-            app.renderAdminBoard();
-        }, (error) => {
-            console.error("Error listening to orders:", error);
-        });
+            onSnapshot(q, (snapshot) => {
+                const orders = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                state.orders = orders;
+                app.renderAdminBoard();
+            }, (error) => {
+                console.error("Error listening to orders:", error);
+            });
+        } else {
+            // Sin Firebase, cargar de localStorage
+            const savedOrders = localStorage.getItem('cafe-orders');
+            if (savedOrders) {
+                state.orders = JSON.parse(savedOrders);
+                app.renderAdminBoard();
+            }
+        }
     },
 
     updateStatus: async (orderId, newStatus) => {
         try {
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), {
-                status: newStatus
-            });
+            if (db && auth) {
+                // Con Firebase
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), {
+                    status: newStatus
+                });
+            } else {
+                // Sin Firebase, actualizar localStorage
+                const order = state.orders.find(o => o.id === orderId);
+                if (order) {
+                    order.status = newStatus;
+                    localStorage.setItem('cafe-orders', JSON.stringify(state.orders));
+                    app.renderAdminBoard();
+                }
+            }
         } catch (e) {
             console.error("Error updating status:", e);
         }
@@ -341,7 +396,7 @@ window.app = {
                         ${itemsHtml}
                     </ul>
                     <div class="flex justify-between items-center">
-                        <span class="font-bold text-stone-900">$${order.total}</span>
+                        <span class="font-bold text-stone-900">S/. ${order.total.toFixed(2)}</span>
                         <div class="flex gap-1">
                             ${nextStatus ? `
                                 <button onclick="app.updateStatus('${order.id}', '${nextStatus}')" class="px-3 py-1.5 ${btnColor} text-white text-xs font-bold rounded-md shadow-sm hover:opacity-90 transition-opacity">
