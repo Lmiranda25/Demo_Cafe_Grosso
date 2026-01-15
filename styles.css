@@ -31,3 +31,14 @@ h1, h2, h3, .brand-font {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+
+/* Efecto hover en imágenes */
+.card-hover:hover img {
+    transform: scale(1.05);
+    transition: transform 0.3s ease;
+}
+
+/* Transiciones suaves para imágenes */
+img {
+    transition: transform 0.3s ease;
+}

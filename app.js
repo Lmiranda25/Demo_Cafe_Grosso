@@ -21,18 +21,18 @@ const state = {
 
 // DATOS MENU (MOCK)
 const MENU = [
-    { id: 1, name: "Medialunas de Manteca", price: 900, cat: "panaderia", img: "🥐", desc: "Clásicas argentinas. Docena $9000." },
-    { id: 2, name: "Medialunas de Grasa", price: 850, cat: "panaderia", img: "🥐", desc: "Saladitas y crocantes. Ideales para el mate." },
-    { id: 3, name: "Café con Leche + 3 Medialunas", price: 4200, cat: "panaderia", img: "☕", desc: "La promo clásica de la casa." },
-    { id: 4, name: "Tostado Jamón y Queso", price: 5500, cat: "salado", img: "🥪", desc: "En pan de miga triple, bien tostado." },
-    { id: 5, name: "Empanada Carne Cuchillo", price: 1500, cat: "salado", img: "🥟", desc: "Jugosa, con aceituna, huevo y cebolla de verdeo." },
-    { id: 6, name: "Empanada Jamón y Queso", price: 1400, cat: "salado", img: "🥟", desc: "Mucho queso, masa hojaldrada casera." },
-    { id: 7, name: "Milanesa Napolitana c/ Papas", price: 9500, cat: "platos", img: "🍽️", desc: "Para compartir. Salsa casera y mucho queso." },
-    { id: 8, name: "Submarino", price: 3200, cat: "panaderia", img: "🍫", desc: "Leche caliente con barra de chocolate Águila." },
-    { id: 9, name: "Alfajor de Maicena XL", price: 1800, cat: "panaderia", img: "🍪", desc: "Con mucho dulce de leche y coco rallado." },
-    { id: 10, name: "Matambre a la Pizza", price: 10500, cat: "platos", img: "🥩", desc: "Tierno, con muzzarella y papas rejilla." },
-    { id: 11, name: "Sándwich de Lomito", price: 8900, cat: "platos", img: "🍔", desc: "Completo: lechuga, tomate, jamón, queso, huevo." },
-    { id: 12, name: "Pastafrola de Membrillo", price: 2500, cat: "panaderia", img: "🥧", desc: "Porción generosa de la receta de la abuela." }
+    { id: 1, name: "Medialunas de Manteca", price: 900, cat: "panaderia", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop", desc: "Clásicas argentinas. Docena $9000." },
+    { id: 2, name: "Medialunas de Grasa", price: 850, cat: "panaderia", img: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop", desc: "Saladitas y crocantes. Ideales para el mate." },
+    { id: 3, name: "Café con Leche + 3 Medialunas", price: 4200, cat: "panaderia", img: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop", desc: "La promo clásica de la casa." },
+    { id: 4, name: "Tostado Jamón y Queso", price: 5500, cat: "salado", img: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=300&fit=crop", desc: "En pan de miga triple, bien tostado." },
+    { id: 5, name: "Empanada Carne Cuchillo", price: 1500, cat: "salado", img: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop", desc: "Jugosa, con aceituna, huevo y cebolla de verdeo." },
+    { id: 6, name: "Empanada Jamón y Queso", price: 1400, cat: "salado", img: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&h=300&fit=crop", desc: "Mucho queso, masa hojaldrada casera." },
+    { id: 7, name: "Milanesa Napolitana c/ Papas", price: 9500, cat: "platos", img: "https://images.unsplash.com/photo-1612392062798-2537158f895b?w=400&h=300&fit=crop", desc: "Para compartir. Salsa casera y mucho queso." },
+    { id: 8, name: "Submarino", price: 3200, cat: "panaderia", img: "https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?w=400&h=300&fit=crop", desc: "Leche caliente con barra de chocolate Águila." },
+    { id: 9, name: "Alfajor de Maicena XL", price: 1800, cat: "panaderia", img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=300&fit=crop", desc: "Con mucho dulce de leche y coco rallado." },
+    { id: 10, name: "Matambre a la Pizza", price: 10500, cat: "platos", img: "https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=300&fit=crop", desc: "Tierno, con muzzarella y papas rejilla." },
+    { id: 11, name: "Sándwich de Lomito", price: 8900, cat: "platos", img: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&h=300&fit=crop", desc: "Completo: lechuga, tomate, jamón, queso, huevo." },
+    { id: 12, name: "Pastafrola de Membrillo", price: 2500, cat: "panaderia", img: "https://images.unsplash.com/photo-1519915212116-7cfef71f1d3e?w=400&h=300&fit=crop", desc: "Porción generosa de la receta de la abuela." }
 ];
 
 // FUNCIONES DE UI
@@ -124,14 +124,14 @@ window.app = {
             const el = document.createElement('div');
             el.className = 'bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden flex flex-col card-hover transition-all duration-300';
             el.innerHTML = `
-                <div class="h-40 bg-stone-100 flex items-center justify-center text-6xl relative">
-                    ${item.img}
-                    <span class="absolute top-3 right-3 bg-white/90 backdrop-blur text-stone-900 text-xs font-bold px-2 py-1 rounded-md border border-stone-200">$${item.price}</span>
+                <div class="h-48 bg-stone-100 relative overflow-hidden">
+                    <img src="${item.img}" alt="${item.name}" class="w-full h-full object-cover" loading="lazy">
+                    <span class="absolute top-3 right-3 bg-amber-500 backdrop-blur text-stone-900 text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg border-2 border-white">$${item.price}</span>
                 </div>
                 <div class="p-5 flex-1 flex flex-col">
                     <h3 class="font-bold text-lg text-stone-800 mb-1 leading-tight">${item.name}</h3>
                     <p class="text-stone-500 text-sm mb-4 flex-1">${item.desc}</p>
-                    <button onclick="app.addToCart(${item.id})" class="w-full py-2 bg-stone-900 text-white rounded-lg font-bold text-sm hover:bg-amber-500 hover:text-stone-900 transition-colors flex items-center justify-center gap-2">
+                    <button onclick="app.addToCart(${item.id})" class="w-full py-2.5 bg-stone-900 text-white rounded-lg font-bold text-sm hover:bg-amber-500 hover:text-stone-900 transition-all hover:shadow-lg flex items-center justify-center gap-2">
                         <i data-lucide="plus" class="w-4 h-4"></i> AGREGAR
                     </button>
                 </div>
@@ -207,8 +207,8 @@ window.app = {
             `;
         } else {
             container.innerHTML = state.cart.map(item => `
-                <div class="flex gap-4 p-3 bg-white border border-stone-200 rounded-xl items-center">
-                    <div class="text-2xl w-12 h-12 bg-stone-50 rounded-lg flex items-center justify-center">${item.img}</div>
+                <div class="flex gap-4 p-3 bg-white border border-stone-200 rounded-xl items-center shadow-sm">
+                    <img src="${item.img}" alt="${item.name}" class="w-16 h-16 rounded-lg object-cover">
                     <div class="flex-1">
                         <h4 class="font-bold text-sm text-stone-800">${item.name}</h4>
                         <p class="text-stone-500 text-xs">$${item.price}</p>
