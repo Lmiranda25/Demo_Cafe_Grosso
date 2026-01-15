@@ -110,10 +110,40 @@ window.app = {
         if(isHidden) {
             modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            // Siempre empezar en el paso 1
+            app.goToStep1();
         } else {
             modal.classList.add('hidden');
             document.body.style.overflow = '';
         }
+    },
+
+    goToStep1: () => {
+        document.getElementById('cart-step-1').classList.remove('hidden');
+        document.getElementById('cart-step-2').classList.add('hidden');
+        lucide.createIcons();
+    },
+
+    goToStep2: () => {
+        if(state.cart.length === 0) return;
+        
+        // Actualizar resumen en el paso 2
+        const summaryEl = document.getElementById('order-summary');
+        const total = state.cart.reduce((a,b) => a + (b.price * b.qty), 0);
+        const totalStep2 = document.getElementById('cart-total-step2');
+        
+        summaryEl.innerHTML = state.cart.map(item => {
+            return `<div class="flex justify-between py-1">
+                <span>${item.qty}x ${item.name}</span>
+                <span class="font-bold">S/. ${(item.price * item.qty).toFixed(2)}</span>
+            </div>`;
+        }).join('');
+        
+        totalStep2.innerText = `S/. ${total.toFixed(2)}`;
+        
+        document.getElementById('cart-step-1').classList.add('hidden');
+        document.getElementById('cart-step-2').classList.remove('hidden');
+        lucide.createIcons();
     },
 
     // Categorías
@@ -213,7 +243,7 @@ window.app = {
         const totalEl = document.getElementById('cart-total');
         const totalHeaderEl = document.getElementById('cart-total-header');
         const subtotalEl = document.getElementById('cart-subtotal');
-        const btnCheckout = document.getElementById('btn-checkout');
+        const btnGoStep2 = document.getElementById('btn-go-step2');
         
         // Badge y contadores
         const count = state.cart.reduce((a,b) => a + b.qty, 0);
@@ -224,7 +254,7 @@ window.app = {
         const total = state.cart.reduce((a,b) => a + (b.price * b.qty), 0);
         totalEl.innerText = `S/. ${total.toFixed(2)}`;
         if (totalHeaderEl) totalHeaderEl.innerText = `S/. ${total.toFixed(2)}`;
-        btnCheckout.disabled = count === 0;
+        if (btnGoStep2) btnGoStep2.disabled = count === 0;
 
         // Subtotal tipo calculadora
         if(state.cart.length > 0 && subtotalEl) {
@@ -349,16 +379,18 @@ window.app = {
 
             state.cart = [];
             app.updateCartUI();
-            app.toggleCart();
-            alert("¡Pedido enviado a la cocina! Gracias por elegir Café Grosso.");
             
+            // Cerrar modal y resetear al paso 1
+            app.toggleCart();
+            
+            alert(`¡Pedido confirmado! 🎉\n\nTotal: S/. ${newOrder.total.toFixed(2)}\n\nEn breve nos contactaremos contigo.`);
         } catch (e) {
             console.error(e);
             alert("Error al enviar pedido. Intente nuevamente.");
         }
         
         btn.disabled = false;
-        btn.innerHTML = `PEDIR <i data-lucide="arrow-right" class="w-5 h-5"></i>`;
+        btn.innerHTML = '<i data-lucide="send" class="w-6 h-6"></i> REALIZAR PEDIDO <i data-lucide="arrow-right" class="w-6 h-6"></i>';
         lucide.createIcons();
     },
 

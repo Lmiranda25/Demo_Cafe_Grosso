@@ -45,7 +45,7 @@ img {
 
 /* Fix para el modal del carrito - evitar que se corte el contenido */
 #cart-items {
-    max-height: calc(100vh - 400px);
+    max-height: calc(100vh - 450px);
     min-height: 200px;
 }
 
@@ -53,4 +53,11 @@ img {
 #cart-modal .slide-in {
     max-height: 100vh;
     overflow-y: auto;
+}
+
+/* Estilos para los pasos del carrito */
+#cart-step-1, #cart-step-2 {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
