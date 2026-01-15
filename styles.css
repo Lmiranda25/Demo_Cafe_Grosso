@@ -42,3 +42,15 @@ h1, h2, h3, .brand-font {
 img {
     transition: transform 0.3s ease;
 }
+
+/* Fix para el modal del carrito - evitar que se corte el contenido */
+#cart-items {
+    max-height: calc(100vh - 400px);
+    min-height: 200px;
+}
+
+/* Asegurar que el panel del carrito sea scrolleable si es necesario */
+#cart-modal .slide-in {
+    max-height: 100vh;
+    overflow-y: auto;
+}
