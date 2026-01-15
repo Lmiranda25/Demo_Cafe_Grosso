@@ -4,6 +4,10 @@ import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, query, or
 
 // CONFIGURACIÓN FIREBASE (OPCIONAL - Sin Firebase funciona con localStorage)
 let auth, db, appId;
+
+// Inicializar window.app inmediatamente para evitar errores
+window.app = window.app || {};
+
 try {
     const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
     if (firebaseConfig) {

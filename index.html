@@ -193,9 +193,23 @@
 
     </div>
 
+    <!-- Inicializar objeto app antes de cargar el módulo -->
+    <script>
+        // Objeto temporal para evitar errores mientras carga el módulo
+        window.app = {
+            init: () => console.log('Cargando...'),
+            filterCategory: () => {},
+            toggleCart: () => {},
+            toggleView: () => {},
+            showHome: () => {},
+            addToCart: () => {},
+            changeQty: () => {},
+            setOrderType: () => {},
+            checkout: () => {},
+            updateStatus: () => {}
+        };
+    </script>
     <!-- JavaScript -->
     <script type="module" src="app.js"></script>
-</body>
-</html>
 </body>
 </html>
